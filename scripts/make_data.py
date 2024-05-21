@@ -126,7 +126,7 @@ def preprocess_texts(examples,src_lang='eng_Latn',tgt_langs=[],tokenizer=None,mo
         return examples
 
 
-def gen_from_iterable_dataset(iterable_ds)
+def gen_from_iterable_dataset(iterable_ds):
     yield from iterable_ds
 
 
