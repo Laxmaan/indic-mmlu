@@ -100,8 +100,9 @@ def preprocess_texts(examples,src_lang='eng_Latn',tgt_langs=[],tokenizer=None,mo
                 tgt_lang=tgt_lang,
             )
         
-        generated_tokens = get_preds(batch,tokenizer,model)
-        translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
+        # generated_tokens = get_preds(batch,tokenizer,model)
+        # translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
+        translations = batch
 
         examples[f'question_{tgt_lang}'] = translations
         
@@ -116,9 +117,10 @@ def preprocess_texts(examples,src_lang='eng_Latn',tgt_langs=[],tokenizer=None,mo
                 tgt_lang=tgt_lang,
             )
         
-        generated_tokens = get_preds(batch,tokenizer,model)
-        translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
+        # generated_tokens = get_preds(batch,tokenizer,model)
+        # translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
         
+        translations = batch
         translations = np.array(translations).reshape(-1,n_options).tolist()
         
         examples[f'options_{tgt_lang}'] = translations
