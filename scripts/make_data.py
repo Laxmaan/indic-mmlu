@@ -167,6 +167,13 @@ def main(args):
         "model":model
     }
     
+    print((f"""\n\n Processing {args.dataset} dataset(s)
+            Using Device :{DEVICE}"
+            Model :{model_name}
+            Quantization :{quantization}
+            Target Languages :{args.target_langs}
+          """))
+    
     datasets_to_process=[]
     if get_mmlu:
         ds = load_dataset('cais/mmlu','all')
