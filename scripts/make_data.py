@@ -182,21 +182,16 @@ def main(args):
                                 "subject":"category"})
         
         
-        datasets_to_process.append(process_ds_args | {
-            "ds":ds,
-            "output_dir" : OUT_DIR/ 'mmlu'
-        })
-    
+        datasets_to_process.append((ds,OUT_DIR/ 'mmlu') )
+
     if get_mmlu_pro:
         ds = load_dataset('TIGER-Lab/MMLU-Pro')
-        datasets_to_process.append(process_ds_args | {
-            "ds":ds,
-            "output_dir" : OUT_DIR/ 'mmlu_pro'
-        })
+        datasets_to_process.append((ds,OUT_DIR/ 'mmlu_pro') )
+
         
         
     
-    [process_dataset(ds) for ds in datasets_to_process]
+    [process_dataset(*args,**process_ds_args) for args in datasets_to_process]
     
 
 
