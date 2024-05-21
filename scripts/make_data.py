@@ -72,7 +72,8 @@ def process_dataset(ds,src_lang='eng_Latn',target_lang='hin_Deva',DEVICE='cpu',m
     get_preds(qs,src_lang=src_lang, tgt_lang=target_lang,
               DEVICE=DEVICE,
               model=model,
-              tokenizer=tokenizer
+              tokenizer=tokenizer,
+              ip=ip
               )
     
     
