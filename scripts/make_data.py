@@ -137,12 +137,13 @@ def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_l
     cols = set(ds.column_names) - {'question','options'}
     cols = list(cols)
     translated_ds = ds.map(preprocess_texts, batched=True, 
-                           batch_size=batch_size,
                            fn_kwargs={"src_lang":src_lang, 
                                     'tgt_langs':target_langs,
                                     "tokenizer":tokenizer,
                                     "model":model,
                                     })
+    
+    out_paths = []
     for tgt_lang in target_langs:
         lang_ds = translated_ds.select_columns(cols+[f'question_{tgt_lang}',f'options_{tgt_lang}'])
         lang_ds = lang_ds.rename_columns({
@@ -152,9 +153,14 @@ def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_l
         
         ds = Dataset.from_generator(partial(gen_from_iterable_dataset, lang_ds), features=lang_ds.features)
 
-        ds.save_to_disk(output_dir/f'{tgt_lang}')
+        save_path = output_dir/f'{tgt_lang}'
+        out_paths.append(save_path)
+        ds.save_to_disk(save_path)
+    
+    return out_paths
     
    
+# def batch_eval
     
 
 def main(args):
@@ -197,10 +203,11 @@ def main(args):
         ds = load_dataset('TIGER-Lab/MMLU-Pro',streaming=True)
         datasets_to_process.append((ds,OUT_DIR/ 'mmlu_pro') )
 
-        
-        
     
-    [process_dataset(*args,**process_ds_args) for args in datasets_to_process]
+    all_paths = []
+    for args in datasets_to_process:
+        all_paths += process_dataset(*args,**process_ds_args)
+
 
 
 
