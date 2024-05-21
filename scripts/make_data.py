@@ -11,6 +11,7 @@ from IndicTransTokenizer import IndicProcessor, IndicTransTokenizer
 import warnings
 import numpy as np
 from pathlib import Path
+import argparse
 
 models = {"small":"ai4bharat/indictrans2-en-indic-dist-200M",
           "large": "ai4bharat/indictrans2-en-indic-1B"}
@@ -127,14 +128,16 @@ def preprocess_texts(examples,src_lang='eng_Latn',tgt_langs=[],tokenizer=None,mo
 
 
 
-def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_langs=['hin_Deva'],):
+def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_langs=['hin_Deva'],batch_size=4):
     cols = set(ds.column_names) - {'question','options'}
     cols = list(cols)
-    translated_ds = ds.map(preprocess_texts, batched=True, fn_kwargs={"src_lang":src_lang, 
-                                                                      'tgt_langs':target_langs,
-                                                                      "tokenizer":tokenizer,
-                                                                      "model":model,
-                                                                      })
+    translated_ds = ds.map(preprocess_texts, batched=True, 
+                           batch_size=batch_size,
+                           fn_kwargs={"src_lang":src_lang, 
+                                    'tgt_langs':target_langs,
+                                    "tokenizer":tokenizer,
+                                    "model":model,
+                                    })
     for tgt_lang in target_langs:
         lang_ds = translated_ds.select_columns(cols+[f'question_{tgt_lang}',f'options_{tgt_lang}'])
         lang_ds = lang_ds.rename_columns({
@@ -150,9 +153,7 @@ def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_l
 def main(args):
     get_mmlu = args.dataset in {'all','mmlu'}
     get_mmlu_pro = args.dataset in {'all','mmlupro'}
-    print(args)
-    print(get_mmlu, get_mmlu_pro)
-    
+
     model_name = models[args.size]
     
     OUT_DIR = Path(args.output)
@@ -164,11 +165,12 @@ def main(args):
         "src_lang":"eng_Latn",
         "target_langs":args.target_langs,
         "tokenizer":tokenizer,
-        "model":model
+        "model":model,
+        "batch_size":args.batch_size
     }
     
     print((f"""\n\n Processing {args.dataset} dataset(s)
-            Using Device :{DEVICE}"
+            Using Device :{DEVICE}
             Model :{model_name}
             Quantization :{quantization}
             Target Languages :{args.target_langs}
@@ -192,7 +194,8 @@ def main(args):
         
     
     [process_dataset(*args,**process_ds_args) for args in datasets_to_process]
-    
+
+
 
 
 if __name__ == "__main__":
@@ -234,7 +237,14 @@ if __name__ == "__main__":
                         default=None,
                         required=False,
                         help='Quantization to use')
+    parser.add_argument('-b','--batch-size', 
+                        type=int,
+                        default=4,
+                        required=False,
+                        help='Batch Size for conversion')
     args = parser.parse_args()
+    
+
     main(args)
 
 
