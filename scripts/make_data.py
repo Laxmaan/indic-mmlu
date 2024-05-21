@@ -151,7 +151,8 @@ def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_l
             f'options_{tgt_lang}':'options'
         })
         
-        ds = Dataset.from_generator(partial(gen_from_iterable_dataset, lang_ds), features=lang_ds.features)
+        #ds = Dataset.from_generator(partial(gen_from_iterable_dataset, lang_ds), features=lang_ds.features)
+        ds = lang_ds
 
         save_path = output_dir/f'{tgt_lang}'
         out_paths.append(save_path)
@@ -191,7 +192,7 @@ def main(args):
     
     datasets_to_process=[]
     if get_mmlu:
-        ds = load_dataset('cais/mmlu','all',streaming=True)
+        ds = load_dataset('cais/mmlu','all')
         #rename mmlu features to mmlu_pro features
         ds = ds.rename_columns({"choices":"options",
                                 "subject":"category"})
@@ -200,7 +201,7 @@ def main(args):
         datasets_to_process.append((ds,OUT_DIR/ 'mmlu') )
 
     if get_mmlu_pro:
-        ds = load_dataset('TIGER-Lab/MMLU-Pro',streaming=True)
+        ds = load_dataset('TIGER-Lab/MMLU-Pro')
         datasets_to_process.append((ds,OUT_DIR/ 'mmlu_pro') )
 
     
