@@ -69,13 +69,13 @@ def process_dataset(ds,src_lang='eng_Latn',target_lang='hin_Deva',DEVICE='cpu',m
     
     qs = ds['test']['question'][:3]
     
-    get_preds(qs,src_lang=src_lang, tgt_lang=target_lang,
+    preds = get_preds(qs,src_lang=src_lang, tgt_lang=target_lang,
               DEVICE=DEVICE,
               model=model,
               tokenizer=tokenizer,
               ip=ip
               )
-    
+    print(preds)
     
 
 def main(args):
@@ -88,7 +88,7 @@ def main(args):
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, trust_remote_code=True)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name, trust_remote_code=True).to(DEVICE)
 
     ip = IndicProcessor(inference=True)
     
