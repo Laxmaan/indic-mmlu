@@ -1,5 +1,5 @@
 import datasets
-from datasets import load_dataset
+from datasets import load_dataset,Dataset,IterableDataset
 from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
 import torch
 from transformers import (
@@ -12,6 +12,7 @@ import warnings
 import numpy as np
 from pathlib import Path
 import argparse
+from functools import partial
 
 models = {"small":"ai4bharat/indictrans2-en-indic-dist-200M",
           "large": "ai4bharat/indictrans2-en-indic-1B"}
@@ -125,6 +126,8 @@ def preprocess_texts(examples,src_lang='eng_Latn',tgt_langs=[],tokenizer=None,mo
         return examples
 
 
+def gen_from_iterable_dataset(iterable_ds)
+    yield from iterable_ds
 
 
 
@@ -145,7 +148,9 @@ def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_l
             f'options_{tgt_lang}':'options'
         })
         
-        lang_ds.save_to_disk(output_dir/f'{tgt_lang}')
+        ds = Dataset.from_generator(partial(gen_from_iterable_dataset, lang_ds), features=lang_ds.features)
+
+        ds.save_to_disk(output_dir/f'{tgt_lang}')
     
    
     
@@ -178,7 +183,7 @@ def main(args):
     
     datasets_to_process=[]
     if get_mmlu:
-        ds = load_dataset('cais/mmlu','all')
+        ds = load_dataset('cais/mmlu','all',streaming=True)
         #rename mmlu features to mmlu_pro features
         ds = ds.rename_columns({"choices":"options",
                                 "subject":"category"})
@@ -187,7 +192,7 @@ def main(args):
         datasets_to_process.append((ds,OUT_DIR/ 'mmlu') )
 
     if get_mmlu_pro:
-        ds = load_dataset('TIGER-Lab/MMLU-Pro')
+        ds = load_dataset('TIGER-Lab/MMLU-Pro',streaming=True)
         datasets_to_process.append((ds,OUT_DIR/ 'mmlu_pro') )
 
         
