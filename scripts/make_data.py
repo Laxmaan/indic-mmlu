@@ -64,12 +64,16 @@ def augment_data(examples):
         outputs += [sentence] + augmented_sequences
     return {"data": outputs}
 
-def process_dataset(ds,target_lang='hin_Deva',DEVICE='cpu',model=None,tokenizer=None,ip=None):
+def process_dataset(ds,,src_lang='eng_Latn',target_lang='hin_Deva',DEVICE='cpu',model=None,tokenizer=None,ip=None):
     print(ds)
     
     qs = ds['test']['question'][:3]
     
-    get_preds(qs)
+    get_preds(qs,src_lang=src_lang, tgt_lang=target_lang,
+              DEVICE=DEVICE,
+              model=model,
+              tokenizer=tokenizer
+              )
     
     
 
