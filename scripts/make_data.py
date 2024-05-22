@@ -89,9 +89,9 @@ def get_preds(batch,tokenizer,model,tgt_lang='hin_Deva'):
             clean_up_tokenization_spaces=True,
         )
         
-    translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
+    #translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
         
-    return translations
+    return generated_tokens
 
         # Postprocess the translations, including entity replacement
         
@@ -159,8 +159,21 @@ def inference_on_batch(examples,tokenizer=None,model=None,tgt_lang='hi_en'):
     
     examples[f'options'] = translations
     
+    return examples
     
     
+def post_process_batch(examples,tgt_lang):
+    question_tokens = examples['question']
+    examples['question'] = ip.postprocess_batch(question_tokens, lang=tgt_lang)
+    
+    translations = []
+    for options in examples['options']:
+        batch = ip.postprocess_batch(options,tgt_lang)
+        translations.append(batch)
+    
+    examples[f'options'] = translations
+    
+    return examples
 
 def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
     data_dict = DatasetDict.load_from_disk(dataset_path)#.to_iterable_dataset(num_shards=64)
@@ -180,6 +193,12 @@ def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
                                     "tgt_lang":tgt_lang
                                 }
                                 )
+        predictions_ds = predictions_ds.map(post_process_batch, batched=True,
+                                            num_proc=cpu_count(),
+                                            fn_kwargs={
+                                                "tgt_lang":tgt_lang
+                                            }
+                                            )
         
         data_dict[key] = predictions_ds
         
