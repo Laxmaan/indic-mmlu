@@ -275,8 +275,8 @@ def main(args):
 
     
     all_paths = []
-    for args in datasets_to_process:
-        all_paths += process_dataset(*args,**process_ds_args)
+    for pos_args in datasets_to_process:
+        all_paths += process_dataset(*pos_args,**process_ds_args)
 
     # generator = pipeline("text2text-generation",model=model,tokenizer=tokenizer,device=DEVICE)
     
