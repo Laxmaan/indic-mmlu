@@ -183,7 +183,10 @@ def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
         
         data_dict[key] = predictions_ds
         
-    data_dict.save_to_disk(dataset_path)
+    out_parts = Path(dataset_path).parts[:-1]
+    out_path = Path(*out_parts,"final")
+        
+    data_dict.save_to_disk(out_path)
 
 
 def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_langs=['hin_Deva'],batch_size=4):
@@ -264,11 +267,11 @@ def main(args):
                                 "subject":"category"})
         
         
-        datasets_to_process.append((ds,OUT_DIR/ 'mmlu') )
+        datasets_to_process.append((ds,OUT_DIR/ 'mmlu'/'intermediate') )
 
     if get_mmlu_pro:
         ds = load_dataset('TIGER-Lab/MMLU-Pro')
-        datasets_to_process.append((ds,OUT_DIR/ 'mmlu_pro') )
+        datasets_to_process.append((ds,OUT_DIR/ 'mmlu_pro'/'intermediate') )
 
     
     all_paths = []
