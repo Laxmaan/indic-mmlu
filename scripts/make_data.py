@@ -1,11 +1,12 @@
 import datasets
-from datasets import load_dataset,Dataset,IterableDataset
+from datasets import load_dataset,Dataset,IterableDataset, load_from_disk, DatasetDict
 from argparse import ArgumentParser,ArgumentDefaultsHelpFormatter
 import torch
 from transformers import (
     AutoModelForSeq2SeqLM,
     AutoTokenizer,
-    BitsAndBytesConfig
+    BitsAndBytesConfig,
+    pipeline
 )
 from IndicTransTokenizer import IndicProcessor, IndicTransTokenizer
 import warnings
@@ -13,6 +14,7 @@ import numpy as np
 from pathlib import Path
 import argparse
 from functools import partial
+from multiprocessing import cpu_count
 
 models = {"small":"ai4bharat/indictrans2-en-indic-dist-200M",
           "large": "ai4bharat/indictrans2-en-indic-1B"}
@@ -57,7 +59,9 @@ def initialize_model_and_tokenizer(ckpt_dir, quantization):
 
 
 
-def get_preds(batch,tokenizer,model):
+
+
+def get_preds(batch,tokenizer,model,tgt_lang='hin_Deva'):
 
     inputs = tokenizer(
             batch,
@@ -85,13 +89,16 @@ def get_preds(batch,tokenizer,model):
             clean_up_tokenization_spaces=True,
         )
         
-    return generated_tokens
+    translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
+        
+    return translations
 
         # Postprocess the translations, including entity replacement
         
 
 def preprocess_texts(examples,src_lang='eng_Latn',tgt_langs=[],tokenizer=None,model=None):
-    
+    #convert the options.
+
     for tgt_lang in tgt_langs:
         #first preprocess the questions
         batch = ip.preprocess_batch(
@@ -107,25 +114,28 @@ def preprocess_texts(examples,src_lang='eng_Latn',tgt_langs=[],tokenizer=None,mo
         examples[f'question_{tgt_lang}'] = translations
         
          
-        #convert the options.
-        n_options = len(examples['options'][0])
-        flat_options = np.array(examples['options']).flatten()
         
-        batch = ip.preprocess_batch(
-                flat_options,
-                src_lang=src_lang,
-                tgt_lang=tgt_lang,
-            )
+        
+  
         
         # generated_tokens = get_preds(batch,tokenizer,model)
         # translations = ip.postprocess_batch(generated_tokens, lang=tgt_lang)
         
-        translations = batch
-        translations = np.array(translations).reshape(-1,n_options).tolist()
+        translations = []
+
+        for options in examples['options']:
+            batch = ip.preprocess_batch(
+                options,
+                src_lang=src_lang,
+                tgt_lang=tgt_lang,
+            )
+
+            translations.append(batch)
+
         
         examples[f'options_{tgt_lang}'] = translations
         
-        return examples
+    return examples
 
 
 def gen_from_iterable_dataset(iterable_ds):
@@ -133,15 +143,71 @@ def gen_from_iterable_dataset(iterable_ds):
 
 
 
+def inference_on_batch(examples,tokenizer=None,model=None,tgt_lang='hi_en'):
+    questions = examples['question']
+
+    
+    examples['question'] = get_preds(questions,tokenizer,model,tgt_lang)
+    
+    
+    translations = []
+
+    for options in examples['options']:
+        batch = get_preds(options,tokenizer,model,tgt_lang)
+        translations.append(batch)
+        
+    
+    examples[f'options'] = translations
+    
+    
+    
+
+def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
+    data_dict = DatasetDict.load_from_disk(dataset_path)#.to_iterable_dataset(num_shards=64)
+    
+    for key in data_dict:
+        print(key)
+        tgt_lang = key.split('/')[1]
+        print(tgt_lang)
+        if tgt_lang=="eng_Latn":
+            continue
+        ds = data_dict[key]#.to_iterable_dataset(num_shards=64)
+        predictions_ds = ds.map(inference_on_batch,batched=True,
+                                batch_size=batch_size,
+                                fn_kwargs={
+                                    "model":model,
+                                    "tokenizer":tokenizer,
+                                    "tgt_lang":tgt_lang
+                                }
+                                )
+        
+        data_dict[key] = predictions_ds
+        
+    data_dict.save_to_disk(dataset_path)
+
+
 def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_langs=['hin_Deva'],batch_size=4):
-    cols = set(ds.column_names) - {'question','options'}
+
+    cols = set(x for col_names in ds.column_names.values() for x in col_names)- {'question','options'}
     cols = list(cols)
+       
+
+    print(cols,target_langs)
     translated_ds = ds.map(preprocess_texts, batched=True, 
+                           num_proc = cpu_count(),
                            fn_kwargs={"src_lang":src_lang, 
                                     'tgt_langs':target_langs,
-                                    "tokenizer":tokenizer,
-                                    "model":model,
+                                    # "tokenizer":tokenizer,
+                                    # "model":model,
                                     })
+    
+    print(translated_ds.column_names)
+    
+    
+    out_ds = DatasetDict({
+        f"{k}/eng_Latn":ds[k] for k in ds
+        
+    })
     
     out_paths = []
     for tgt_lang in target_langs:
@@ -152,12 +218,12 @@ def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_l
         })
         
         #ds = Dataset.from_generator(partial(gen_from_iterable_dataset, lang_ds), features=lang_ds.features)
-        ds = lang_ds
+        for split in lang_ds:
+            out_ds[f"{split}/{tgt_lang}"] = lang_ds[split]
 
-        save_path = output_dir/f'{tgt_lang}'
-        out_paths.append(save_path)
-        ds.save_to_disk(save_path)
-    
+    save_path = str(output_dir)
+    out_paths.append(save_path)
+    out_ds.save_to_disk(save_path)
     return out_paths
     
    
@@ -209,6 +275,10 @@ def main(args):
     for args in datasets_to_process:
         all_paths += process_dataset(*args,**process_ds_args)
 
+    # generator = pipeline("text2text-generation",model=model,tokenizer=tokenizer,device=DEVICE)
+    
+    for dataset_path in all_paths:
+        inference_on_dataset(dataset_path,model, tokenizer,batch_size=args.batch_size)
 
 
 
