@@ -178,6 +178,7 @@ def post_process_batch(examples,tgt_lang):
 def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
     data_dict = DatasetDict.load_from_disk(dataset_path)#.to_iterable_dataset(num_shards=64)
     
+    print("RUnning translations /n")
     for key in data_dict:
         print(key)
         tgt_lang = key.split('/')[1]
@@ -193,7 +194,23 @@ def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
                                     "tgt_lang":tgt_lang
                                 }
                                 )
-        predictions_ds = predictions_ds.map(post_process_batch, batched=True,
+        data_dict[key] = predictions_ds
+    print("\nDone translating./n")
+    
+    out_parts = Path(dataset_path).parts[:-1]
+    out_path = Path(*out_parts,"translated")
+        
+    data_dict.save_to_disk(out_path)
+
+    print("\n Beginning Post Processing\n")
+    for key in data_dict:
+        print(key)
+        tgt_lang = key.split('/')[1]
+        print(tgt_lang)
+        if tgt_lang=="eng_Latn":
+            continue
+        ds = data_dict[key]#.to_iterable_dataset(num_shards=64)
+        predictions_ds = ds.map(post_process_batch, batched=True,
                                             num_proc=cpu_count(),
                                             fn_kwargs={
                                                 "tgt_lang":tgt_lang
@@ -202,6 +219,7 @@ def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
         
         data_dict[key] = predictions_ds
         
+    print("\n Done Post processing \n")
     out_parts = Path(dataset_path).parts[:-1]
     out_path = Path(*out_parts,"final")
         
