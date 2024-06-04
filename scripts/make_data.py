@@ -200,7 +200,7 @@ def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
     out_parts = Path(dataset_path).parts[:-1]
     out_path = Path(*out_parts,"translated")
         
-    data_dict.save_to_disk(out_path)
+    data_dict.save_to_disk(str(out_path))
 
     print("\n Beginning Post Processing\n")
     for key in data_dict:
@@ -223,7 +223,7 @@ def inference_on_dataset(dataset_path,model,tokenizer,batch_size=1):
     out_parts = Path(dataset_path).parts[:-1]
     out_path = Path(*out_parts,"final")
         
-    data_dict.save_to_disk(out_path)
+    data_dict.save_to_disk(str(out_path))
 
 
 def process_dataset(ds,output_dir,tokenizer, model, src_lang='eng_Latn',target_langs=['hin_Deva'],batch_size=4):
